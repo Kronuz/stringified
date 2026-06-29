@@ -12,6 +12,7 @@
 #include <cassert>
 #include <cstdio>
 #include <cstring>
+#include <format>
 #include <string>
 #include <string_view>
 #include <sstream>
@@ -127,11 +128,29 @@ static void test_iterate_and_stream() {
 }
 
 
+// ---------------------------------------------------------------------------
+// std::format support: the std::formatter<stringified> specialization formats a
+// stringified exactly as its underlying string_view, including format specs.
+// ---------------------------------------------------------------------------
+
+static void test_std_format() {
+	const std::string owned = "world";
+	stringified s(owned);
+
+	assert(std::format("{}", s) == "world");
+	assert(std::format("hello {}", s) == "hello world");
+	assert(std::format("[{:>7}]", s) == "[  world]");   // a spec forwarded to string_view
+
+	std::printf("stringified std::format OK: formats as its string_view, honoring specs\n");
+}
+
+
 int main() {
 	test_view_accessors();
 	test_construct_from_inputs();
 	test_c_str_null_terminated();
 	test_iterate_and_stream();
+	test_std_format();
 	std::printf("all stringified tests passed\n");
 	return 0;
 }
