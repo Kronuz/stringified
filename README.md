@@ -1,5 +1,7 @@
 # stringified
 
+[![CI](https://github.com/Kronuz/stringified/actions/workflows/ci.yml/badge.svg)](https://github.com/Kronuz/stringified/actions/workflows/ci.yml)
+
 A small, header-only, dependency-free **string_view wrapper** for C++20,
 extracted from [Xapiand](https://github.com/Kronuz/Xapiand).
 
