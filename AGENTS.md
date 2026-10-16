@@ -12,7 +12,8 @@ stringified.hh               std::string_view wrapper with a backing std::string
 test/test.cc                 Runnable smoke test: view accessors, construction from each input, c_str() termination, iterators, operator<<.
 CMakeLists.txt               INTERFACE library `stringified` (+ alias stringified::stringified); CTest test `stringified`.
 LICENSE                      MIT, Copyright (c) 2015-2018 Dubalu LLC.
-README.md                    What it is, install, usage.
+README.md                    What it is, install, quick start.
+docs/API.md                  Usage and the full interface.
 ARCHITECTURE.md              Internal design: the two members, construction, the c_str() contract.
 ```
 

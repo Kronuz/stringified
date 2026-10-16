@@ -1,0 +1,20 @@
+# stringified: one parameter type for every string, with a C string when needed.
+# Render: d2 --layout elk --sketch --theme 302 docs/stringified.d2 docs/stringified.svg
+direction: right
+inputs: callers pass {
+  s: "std::string"
+  v: "std::string_view"
+  l: "\"literal\""
+}
+st: "const stringified&" {
+  label: "const stringified&\na view, copied only if needed"
+}
+out: uses {
+  v: "as std::string_view"
+  c: "c_str() for C APIs"
+}
+inputs.s -> st
+inputs.v -> st
+inputs.l -> st
+st -> out.v
+st -> out.c

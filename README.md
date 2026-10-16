@@ -1,113 +1,90 @@
 # stringified
 
 [![CI](https://github.com/Kronuz/stringified/actions/workflows/ci.yml/badge.svg)](https://github.com/Kronuz/stringified/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+![C++20](https://img.shields.io/badge/C%2B%2B-20-blue.svg)
+![Header-only](https://img.shields.io/badge/header--only-yes-green.svg)
 
-A small, header-only, dependency-free **string_view wrapper** for C++20,
-extracted from [Xapiand](https://github.com/Kronuz/Xapiand).
+One parameter type for every kind of string in C++20: take a
+`const stringified&`, callers pass a `std::string_view` (implicitly) or a
+`std::string` (wrapped explicitly), and you get a view, plus a null-terminated `c_str()`
+when a C API needs one. It copies only when termination requires it.
 
-## What it is
+![stringified: any string flavor into one parameter, out as a view or a C string](docs/stringified.svg)
 
-One header, `stringified.hh`: a thin wrapper around `std::string_view` that lets
-a function accept any string-shaped input (a `std::string`, a
-`std::string_view`, a string literal) through one type, and hands back a
-null-terminated `c_str()` when the caller needs one. It only copies the data
-into its own backing store when that's actually required to guarantee
-termination. The rest of the time it's a plain view over the caller's buffer.
+## ✨ Highlights
 
-The point is to bridge the gap between `std::string_view` (cheap, but not
-null-terminated) and C APIs that want a `const char*`. You take a
-`const stringified&` parameter, and the caller can pass whatever they have.
-Inside, you read it as a view, or call `c_str()` when you need to hand a
-`const char*` to a C function:
+- **One signature** for views and strings: `std::string_view` converts implicitly;
+  `std::string` takes an explicit `stringified(s)`.
+- **No copy when possible.** `c_str()` points back into a whole `std::string`;
+  it copies once only for a non-terminated slice.
+- **Reads like a `string_view`**: `size()`, `data()`, iteration, `operator[]`, and
+  an implicit conversion.
+- **One header, no dependencies.**
 
-- **Construct from** `std::string` (lvalue or rvalue), `std::string_view`, or a
-  string literal.
-- **Read as a view:** `size()` / `length()`, `empty()`, `data()`, `operator[]`,
-  `at()`, `front()`, `back()`, `begin()`/`end()` (and the `c` variants), and an
-  implicit conversion to `std::string_view`.
-- **`c_str()`:** returns a null-terminated `const char*`. If the wrapped view is
-  already terminated (e.g. it spans a whole `std::string`), it points back into
-  that buffer with no copy; otherwise it copies into the backing store once and
-  returns that.
-- **`operator<<`:** writes the wrapped contents to a `std::ostream`.
+## 📦 Installation
 
-## Install
-
-CMake with `FetchContent`:
+Requires a C++20 compiler; CMake 3.14 or newer for the CMake route. CI builds it
+on Linux (x86_64, arm64), macOS (arm64, x86_64), and FreeBSD, plus ASan, UBSan,
+and TSan builds.
 
 ```cmake
 include(FetchContent)
-FetchContent_Declare(
-  stringified
+FetchContent_Declare(stringified
   GIT_REPOSITORY https://github.com/Kronuz/stringified.git
-  GIT_TAG        main
-)
+  GIT_TAG        main)
 FetchContent_MakeAvailable(stringified)
 
-target_link_libraries(your_target PRIVATE stringified::stringified)
+target_link_libraries(my_app PRIVATE stringified::stringified)
 ```
 
-The `stringified` target is a pure `INTERFACE` library: it compiles nothing,
-requests `cxx_std_20`, and puts the header directory on your include path. Then:
+Or copy `stringified.hh` onto your include path.
+
+## 🚀 Quick start
 
 ```cpp
 #include "stringified.hh"
-```
 
-Requires C++20. On macOS it builds with AppleClang/libc++, the same toolchain
-Xapiand uses. The header keeps its original filename, so a codebase that already
-`#include "stringified.hh"` just needs this repo on its include path.
-
-## Usage
-
-```cpp
-#include "stringified.hh"
+#include <cstdio>
 #include <string>
 #include <string_view>
 
-// One parameter type accepts every string flavor the caller might hold.
 void log_line(const stringified& s) {
-    // Read it as a view for anything that doesn't need a C string:
-    if (s.empty()) return;
-
-    // Or hand a guaranteed-null-terminated pointer to a C API. No copy when
-    // s already wraps a whole std::string; a single copy when it wraps a
-    // non-terminated slice.
-    std::fputs(s.c_str(), stderr);
+	std::fputs(s.c_str(), stderr);   // null-terminated, copied only if needed
 }
 
-std::string owned = "from a std::string";
-std::string_view view = "from a string_view";
-
-log_line(owned);                          // view aliases owned's buffer
-log_line(view);                           // view aliases the literal
-log_line("from a literal");               // binds via the string_view ctor
-log_line(std::string("temporary"));       // rvalue moves into the backing store
+int main() {
+	std::string owned = "from a std::string\n";
+	log_line(stringified(owned));                          // explicit; no copy
+	log_line(std::string_view("from a view\n"));           // implicit
+	log_line(std::string_view("from a literal\n"));
+}
 ```
 
-The implicit `operator std::string_view()` means a `stringified` drops straight
-into anything that takes a `std::string_view`. Reach for `c_str()` only at the
-boundary where a `const char*` is required.
+## 🎯 When to use it
 
-## Build & test
+- ✅ Functions that pass strings on to C APIs (`open`, `getenv`, `syslog`) but
+  should accept any string type.
+- ❌ Owning storage: it is a parameter type, not a string class.
+
+## 📚 Documentation
+
+- [docs/API.md](docs/API.md): usage and the full interface.
+- [ARCHITECTURE.md](ARCHITECTURE.md): when it copies, and why.
+- [AGENTS.md](AGENTS.md): repository map and traps.
+
+## 🛠️ Building and testing
 
 ```sh
 cmake -B build && cmake --build build && ctest --test-dir build
 ```
 
-The test checks the view accessors against each accepted input type, confirms
-`c_str()` is always null-terminated (and that it copies only for a
-non-terminated slice, not for a whole string), round-trips the iterators, and
-verifies `operator<<`. It prints `all stringified tests passed` and exits 0.
+## 🤝 Contributing
 
-## Provenance
+Issues and pull requests are welcome. Read [AGENTS.md](AGENTS.md) first. CI must
+pass on every platform.
 
-Extracted from [Xapiand](https://github.com/Kronuz/Xapiand).
-`stringified.hh` had zero dependencies already (only the standard
-`<string>`/`<string_view>`/`<ostream>` headers), so it was copied verbatim, no
-decoupling delta. See [ARCHITECTURE.md](ARCHITECTURE.md) for the design and
-[AGENTS.md](AGENTS.md) for the repo map and invariants.
+## 📄 License
 
-## License
-
-MIT, Copyright (c) 2015-2018 Dubalu LLC. See [LICENSE](LICENSE).
+MIT, Copyright (c) 2015-2018 Dubalu LLC. See [LICENSE](LICENSE). Extracted from
+[Xapiand](https://github.com/Kronuz/Xapiand).
