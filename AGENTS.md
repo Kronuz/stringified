@@ -50,11 +50,11 @@ target is `stringified_test`; the registered CTest name is `stringified`.
   conversion, `operator<<`) read `_str_view`, never `_str` directly. `_str` is
   only ever the backing store. Keep new accessors reading the view.
 - **`c_str()` never reads past the view.** It returns the view's data unchanged
-  only when `_terminated` is set (the view is a whole `std::string` the caller
-  owns, or our own `_str`); otherwise it copies into `_str` and re-points the
-  view. A bare `string_view` is never assumed terminated, so a literal wrapped
-  as a `string_view` is copied on the first `c_str()`. Wrap a `std::string`
-  to avoid that copy.
+  only when `_terminated` is set (a whole `std::string` the caller owns, a C
+  string or literal passed as `const char*`, or our own `_str`); otherwise it
+  copies into `_str` and re-points the view. A bare `string_view` is never
+  assumed terminated, so it is copied on the first `c_str()`. Pass a `std::string`
+  or a `const char*` to avoid that copy.
 - **The members are `mutable` on purpose.** `c_str()` is `const` but may fill
   `_str` and re-point `_str_view`. Keep both members `mutable`.
 - **Construction ownership matters.** `std::string&&` moves into `_str` (the

@@ -122,6 +122,12 @@ public:
         bind_own();
     }
 
+    // A C string, literal or char buffer is terminated by contract: c_str() aliases it.
+    stringified(const char* str)
+        : _str_view(str),
+          _terminated(true)
+    { }
+
     stringified(const std::string_view& str_view)
         : _str_view(str_view)
     { }
@@ -139,7 +145,7 @@ public:
     }
 
     // Null-terminated and never reads past the view: a whole std::string and
-    // our own storage are returned as is, anything else is copied once.
+    // our own storage and a C string are returned as is, a bare string_view is copied once.
     auto c_str() const {
         if (!_terminated) {
             _str.assign(_str_view.data(), _str_view.size());

@@ -266,6 +266,20 @@ static void test_copy_move_own_storage() {
 // it (exact allocation, no terminator) is copied, not peeked past.
 // ---------------------------------------------------------------------------
 
+static void test_c_str_cstring_aliases() {
+	const char* lit = "hello";
+	stringified a(lit);
+	assert(a.c_str() == lit);          // C string: aliased, no copy
+	assert(a.length() == 5);
+	stringified b("literal");
+	assert(std::strcmp(b.c_str(), "literal") == 0);
+	stringified c(std::string_view(lit, 3));
+	assert(c.c_str() != lit && std::strcmp(c.c_str(), "hel") == 0);  // bare view: copied
+	stringified d(a);
+	assert(d.c_str() == lit);          // copies keep the terminated state
+	std::printf("stringified c_str OK: C strings alias\n");
+}
+
 static void test_c_str_no_overread() {
 	for (std::size_t n = 0; n <= 70; ++n) {
 		char* buf = new char[n ? n : 1];
@@ -288,6 +302,7 @@ static void test_c_str_no_overread() {
 int main() {
 	test_copy_move_own_storage();
 	test_c_str_no_overread();
+	test_c_str_cstring_aliases();
 	test_rvalue_string_is_moved();
 	test_view_accessors();
 	test_construct_from_inputs();
