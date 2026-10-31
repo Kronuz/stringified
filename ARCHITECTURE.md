@@ -33,15 +33,15 @@ view doesn't already sit in a terminated buffer. They're `mutable` because
 The constructors decide whether the wrapper owns a copy or just aliases the
 caller's data:
 
-- **`const std::string&`** — `_str_view` aliases the caller's buffer. No copy.
+- **`const std::string&`** (explicit): `_str_view` aliases the caller's buffer. No copy.
   Because a whole `std::string` is null-terminated, `c_str()` later needs no
   copy either.
-- **`std::string&&`** — the string moves into `_str` and `_str_view` points at
-  that owned copy. The wrapper now owns the data, so it outlives the caller's
+- **`std::string&&`** (explicit): the string moves into `_str` and `_str_view`
+  points at it. The wrapper owns the data, so it outlives the caller's
   temporary.
-- **`const char*`** (including string literals) — the view spans the C string
+- **`const char*`** (including string literals): the view spans the C string
   and `_terminated` is set, so `c_str()` aliases it.
-- **`const std::string_view&` / `std::string_view&&`** — `_str_view` is the
+- **`const std::string_view&` / `std::string_view&&`**: `_str_view` is the
   view as given. The wrapper owns nothing; the byte after the view is unknown,
   so the first `c_str()` copies.
 

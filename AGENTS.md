@@ -8,10 +8,11 @@ easy to fall into.
 ## Repo map
 
 ```
-stringified.hh               std::string_view wrapper with a backing std::string for null-terminated c_str(). Header. Verbatim from Xapiand.
+stringified.hh               std::string_view wrapper with a backing std::string for null-terminated c_str(). Header.
 test/test.cc                 Runnable smoke test: view accessors, construction from each input, c_str() termination, iterators, operator<<.
 CMakeLists.txt               INTERFACE library `stringified` (+ alias stringified::stringified); CTest test `stringified`.
-LICENSE                      MIT, Copyright (c) 2015-2018 Dubalu LLC.
+LICENSE                      MIT, Copyright (c) 2026 Germán Méndez Bravo and (c) 2015-2020 Dubalu LLC.
+CHANGELOG.md                 Behavior changes, dated.
 README.md                    What it is, install, quick start.
 docs/API.md                  Usage and the full interface.
 ARCHITECTURE.md              Internal design: the two members, construction, the c_str() contract.
@@ -36,7 +37,8 @@ target is `stringified_test`; the registered CTest name is `stringified`.
   libraries; the header itself is older-standard-friendly, but don't drop the
   target below it.
 - **Zero external dependencies.** The only includes are `<string>`,
-  `<string_view>`, and `<ostream>`. Don't add anything else.
+  `<string_view>`, `<ostream>`, `<utility>`, and `<format>` when the standard
+  library has it. Don't add anything else.
 - **Filename is stable.** The header keeps its original Xapiand name
   (`stringified.hh`) so a consumer that already `#include`s it just needs this
   repo on the include path. Don't rename it.
@@ -66,8 +68,8 @@ target is `stringified_test`; the registered CTest name is `stringified`.
 - **Copy and move re-point the view.** A view into the source's own `_str` is
   rebound to the destination's `_str` (a short string's buffer lives inside the
   object, so copying the view would dangle); a view over caller storage is
-  copied as is. Older versions copied the view verbatim (dangling) and
-  `c_str()` peeked at the byte past a `string_view`; both were bugs, fixed.
+  copied as is. Copying the view alone dangles, and reading the byte past a
+  `string_view` can fault; `CHANGELOG.md` records both bugs.
 - **It's a view first.** Prefer the implicit `std::string_view` conversion for
   reads; reach for `c_str()` only at a `const char*` boundary, since that's the
   only path that can trigger a copy.
@@ -84,7 +86,7 @@ target is `stringified_test`; the registered CTest name is `stringified`.
 ## Standalone vs. Xapiand
 
 This is a standalone extraction from
-[Xapiand](https://github.com/Kronuz/Xapiand). `stringified.hh` had zero
-dependencies already (only the standard `<string>`/`<string_view>`/`<ostream>`
-headers), so it was copied verbatim, there is no decoupling delta. Keep it that
-way; any change here should be reconcilable with upstream as a plain edit.
+[Xapiand](https://github.com/Kronuz/Xapiand). `stringified.hh` needs only
+standard headers, so it has no decoupling delta. It differs from upstream by the
+fixes in `CHANGELOG.md`. Keep any change here reconcilable with upstream as a
+plain edit.

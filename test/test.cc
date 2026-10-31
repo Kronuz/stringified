@@ -174,8 +174,8 @@ static void test_rvalue_string_is_moved() {
 // ---------------------------------------------------------------------------
 // Copy and move: the view must point at the object's own storage, never into a
 // source that is gone or moved from. Sizes 0..80 cover the short-string buffer
-// (inside the object) and the heap. Under ASan the old code read freed/stale
-// memory here.
+// (inside the object) and the heap. A view copied verbatim reads freed or stale
+// memory here under ASan.
 // ---------------------------------------------------------------------------
 
 static std::string make(std::size_t n) {
@@ -263,7 +263,7 @@ static void test_copy_move_own_storage() {
 
 // ---------------------------------------------------------------------------
 // c_str() never reads past a view: a view over a heap buffer with no byte after
-// it (exact allocation, no terminator) is copied, not peeked past.
+// it (exact allocation, no terminator) is copied; the byte after it is never read.
 // ---------------------------------------------------------------------------
 
 static void test_c_str_cstring_aliases() {

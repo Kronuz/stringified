@@ -41,8 +41,8 @@ class stringified {
     mutable std::string _str;
     mutable std::string_view _str_view;
     // True when _str_view is known to be followed by a '\0': a whole
-    // std::string the caller owns, or our own _str. A bare string_view says
-    // nothing about the byte after its end, so it is never assumed terminated.
+    // std::string the caller owns, a C string, or our own _str. A bare
+    // string_view says nothing about the byte after its end.
     mutable bool _terminated = false;
 
     // The view points into our own _str.
