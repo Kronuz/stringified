@@ -24,7 +24,9 @@
 #ifndef STRINGIFIED_HH
 #define STRINGIFIED_HH
 
+#if __has_include(<format>)
 #include <format>                // for std::formatter
+#endif
 #include <string>                // for std::string
 #include <string_view>           // for std::string_view
 #include <ostream>               // for std::ostream
@@ -38,43 +40,94 @@
 class stringified {
     mutable std::string _str;
     mutable std::string_view _str_view;
+    // True when _str_view is known to be followed by a '\0': a whole
+    // std::string the caller owns, or our own _str. A bare string_view says
+    // nothing about the byte after its end, so it is never assumed terminated.
+    mutable bool _terminated = false;
+
+    // The view points into our own _str.
+    bool owns() const noexcept {
+        return _str_view.data() == _str.data();
+    }
+
+    // Point the view at our own storage; call after _str holds the data.
+    void bind_own() noexcept {
+        _str_view = std::string_view(_str);
+        _terminated = true;
+    }
 
 public:
+    // Copies and moves always leave the view pointing at the new object's own
+    // storage when the source's view pointed at the source's storage (the
+    // buffer of a short string lives inside the object, so it cannot be
+    // carried over by copying the view).
     stringified(const stringified& v)
-        : _str_view(v._str_view)
-    { }
+        : _str_view(v._str_view),
+          _terminated(v._terminated)
+    {
+        if (v.owns()) {
+            _str = v._str;
+            bind_own();
+        }
+    }
 
     stringified(stringified&& v) noexcept
-        : _str(std::move(v._str)),
-          _str_view(std::move(v._str_view))
-    { }
+        : _str_view(v._str_view),
+          _terminated(v._terminated)
+    {
+        if (v.owns()) {
+            _str = std::move(v._str);
+            bind_own();
+            v._str.clear();
+            v.bind_own();
+        }
+    }
 
     stringified& operator=(const stringified& o) {
-        _str_view = o._str_view;
+        if (this != &o) {
+            if (o.owns()) {
+                _str = o._str;
+                bind_own();
+            } else {
+                _str_view = o._str_view;
+                _terminated = o._terminated;
+            }
+        }
         return *this;
     }
 
     stringified& operator=(stringified&& o) noexcept {
-        _str = std::move(o._str);
-        _str_view = std::move(o._str_view);
+        if (this != &o) {
+            if (o.owns()) {
+                _str = std::move(o._str);
+                bind_own();
+                o._str.clear();
+                o.bind_own();
+            } else {
+                _str_view = o._str_view;
+                _terminated = o._terminated;
+            }
+        }
         return *this;
     }
 
     explicit stringified(const std::string& str)
-        : _str_view(str)
+        : _str_view(str),
+          _terminated(true)
     { }
 
     explicit stringified(std::string&& str)
-        : _str(std::move(str)),
-          _str_view(_str)
-    { }
+        : _str(std::move(str))
+    {
+        bind_own();
+    }
 
     stringified(const std::string_view& str_view)
         : _str_view(str_view)
     { }
 
     stringified(std::string_view&& str_view)
-        : _str_view(std::move(str_view))
+        : _str_view(str_view)
     { }
 
     auto empty() const noexcept {
@@ -85,15 +138,15 @@ public:
         return _str_view.size();
     }
 
+    // Null-terminated and never reads past the view: a whole std::string and
+    // our own storage are returned as is, anything else is copied once.
     auto c_str() const {
-        auto str_data = _str.data();
-        auto str_view_data = _str_view.data();
-        if (str_data != str_view_data && *(str_view_data + _str_view.size()) != '\0') {
+        if (!_terminated) {
             _str.assign(_str_view.data(), _str_view.size());
-            _str_view = _str;
-            str_view_data = str_data;
+            _str_view = std::string_view(_str);
+            _terminated = true;
         }
-        return str_view_data;
+        return _str_view.data();
     }
 
     auto size() const noexcept {
@@ -146,6 +199,7 @@ public:
 };
 
 
+#if defined(__cpp_lib_format)
 // std::format support: a stringified is a string_view wrapper, so format it as one.
 template <>
 struct std::formatter<stringified> : std::formatter<std::string_view> {
@@ -154,5 +208,7 @@ struct std::formatter<stringified> : std::formatter<std::string_view> {
 		return std::formatter<std::string_view>::format(std::string_view(val), ctx);
 	}
 };
+
+#endif // __cpp_lib_format
 
 #endif // STRINGIFIED_HH

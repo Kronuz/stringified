@@ -12,11 +12,14 @@
 #include <cassert>
 #include <cstdio>
 #include <cstring>
+#if __has_include(<format>)
 #include <format>
+#endif
 #include <string>
 #include <string_view>
 #include <sstream>
 
+#include <vector>
 #include "stringified.hh"
 
 
@@ -133,6 +136,7 @@ static void test_iterate_and_stream() {
 // stringified exactly as its underlying string_view, including format specs.
 // ---------------------------------------------------------------------------
 
+#if defined(__cpp_lib_format)
 static void test_std_format() {
 	const std::string owned = "world";
 	stringified s(owned);
@@ -144,6 +148,7 @@ static void test_std_format() {
 	std::printf("stringified std::format OK: formats as its string_view, honoring specs\n");
 }
 
+#endif
 
 // ---------------------------------------------------------------------------
 // stringified(std::string&&) takes ownership: a heap-allocated string is moved
@@ -166,13 +171,131 @@ static void test_rvalue_string_is_moved() {
 }
 
 
+// ---------------------------------------------------------------------------
+// Copy and move: the view must point at the object's own storage, never into a
+// source that is gone or moved from. Sizes 0..80 cover the short-string buffer
+// (inside the object) and the heap. Under ASan the old code read freed/stale
+// memory here.
+// ---------------------------------------------------------------------------
+
+static std::string make(std::size_t n) {
+	std::string r;
+	for (std::size_t i = 0; i < n; ++i) r.push_back(char('a' + i % 26));
+	return r;
+}
+
+static void check(const stringified& s, const std::string& want) {
+	assert(std::string_view(s) == want);
+	assert(s.size() == want.size());
+	const char* p = s.c_str();
+	assert(std::string_view(p, want.size()) == want);
+	assert(p[want.size()] == '\0');
+	assert(s.data() == p);
+}
+
+static void test_copy_move_own_storage() {
+	for (std::size_t n = 0; n <= 80; ++n) {
+		const std::string want = make(n);
+
+		// copy construct from an owning source, then destroy the source
+		{
+			auto* src = new stringified(std::string(want));
+			stringified c(*src);
+			delete src;
+			check(c, want);
+		}
+		// copy construct: the copy has its own buffer (distinct from source)
+		{
+			stringified src{std::string(want)};
+			stringified c(src);
+			assert(c.data() != src.data());
+			check(c, want);
+			check(src, want);
+		}
+		// move construct, source destroyed / reused
+		{
+			auto* src = new stringified(std::string(want));
+			stringified m(std::move(*src));
+			delete src;
+			check(m, want);
+		}
+		// copy / move assignment from owning source into owning and viewing targets
+		for (int target = 0; target < 2; ++target) {
+			const std::string other = make(n + 7);
+			stringified src{std::string(want)};
+			stringified t = target ? stringified(std::string(other)) : stringified(std::string_view(other));
+			t = src;
+			assert(t.data() != src.data() || n == 0);
+			check(t, want);
+			check(src, want);
+			stringified t2 = target ? stringified(std::string(other)) : stringified(std::string_view(other));
+			{
+				stringified src2{std::string(want)};
+				t2 = std::move(src2);
+			}
+			check(t2, want);
+		}
+		// copy of a copy through a vector (reallocation moves every element)
+		{
+			std::vector<stringified> v;
+			for (int i = 0; i < 9; ++i) v.emplace_back(std::string(want + char('0' + i)));
+			for (int i = 0; i < 9; ++i) check(v[i], want + char('0' + i));
+		}
+		// self-assignment
+		{
+			stringified s{std::string(want)};
+			stringified& r = s;
+			s = r;
+			check(s, want);
+		}
+		// copies of views alias the original buffer, unchanged
+		{
+			const std::string ext = want;
+			stringified a{std::string_view(ext)};
+			stringified b(a);
+			assert(b.data() == ext.data());
+			check(stringified(std::string_view(ext)), want);
+		}
+	}
+	std::printf("stringified copy/move OK: the view always points at the object's own storage\n");
+}
+
+
+// ---------------------------------------------------------------------------
+// c_str() never reads past a view: a view over a heap buffer with no byte after
+// it (exact allocation, no terminator) is copied, not peeked past.
+// ---------------------------------------------------------------------------
+
+static void test_c_str_no_overread() {
+	for (std::size_t n = 0; n <= 70; ++n) {
+		char* buf = new char[n ? n : 1];
+		for (std::size_t i = 0; i < n; ++i) buf[i] = char('A' + i % 26);
+		stringified s{std::string_view(buf, n)};
+		const char* p = s.c_str();
+		assert(p != buf);
+		assert(std::string_view(p, n) == std::string_view(buf, n));
+		assert(p[n] == '\0');
+		delete[] buf;                       // c_str() result is independent of buf
+		assert(std::string_view(s) == make(0).assign(p, n));
+		const std::string whole = make(n);  // a whole std::string is aliased, no copy
+		stringified w(whole);
+		assert(w.c_str() == whole.c_str());
+	}
+	std::printf("stringified c_str OK: no read past a string_view\n");
+}
+
+
 int main() {
+	test_copy_move_own_storage();
+	test_c_str_no_overread();
 	test_rvalue_string_is_moved();
 	test_view_accessors();
 	test_construct_from_inputs();
 	test_c_str_null_terminated();
 	test_iterate_and_stream();
+#if defined(__cpp_lib_format)
 	test_std_format();
+#endif
 	std::printf("all stringified tests passed\n");
 	return 0;
 }

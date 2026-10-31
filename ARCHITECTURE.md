@@ -51,28 +51,24 @@ without always copying:
 
 ```cpp
 auto c_str() const {
-    auto str_data = _str.data();
-    auto str_view_data = _str_view.data();
-    if (str_data != str_view_data && *(str_view_data + _str_view.size()) != '\0') {
+    if (!_terminated) {
         _str.assign(_str_view.data(), _str_view.size());
-        _str_view = _str;
-        str_view_data = str_data;
+        _str_view = std::string_view(_str);
+        _terminated = true;
     }
-    return str_view_data;
+    return _str_view.data();
 }
 ```
 
-It looks at the byte just past the end of the view. If the view already points
-into `_str` (we own it), or the next byte is already `'\0'` (the view spans a
-terminated buffer, e.g. a whole `std::string` or a literal), there's nothing to
-do and it returns the view's data directly. Only when neither holds, a
-non-terminated slice, does it copy the bytes into `_str` and re-point `_str_view`
-at the owned copy. So a whole-string or literal wrapper never copies; a substring
-copies exactly once, on first `c_str()`.
+`_terminated` is set when the view is a whole `std::string` the caller owns or
+our own `_str`; then `c_str()` returns the view's data directly. For anything
+else (a `string_view`, including a literal or a slice) the byte after the view
+is unknown and is never read: the bytes are copied into `_str` once, on first
+`c_str()`, and the view is re-pointed at that copy.
 
-Reading the byte past the view's end is deliberate and relies on the caller
-passing views into buffers that have a readable byte there (which `std::string`
-and string literals always do). It is the original Xapiand behavior, preserved.
+Copy and move construction/assignment rebind the view to the destination's own
+`_str` whenever the source's view pointed at the source's `_str`; a short
+string's buffer is inside the object, so copying the view alone would dangle.
 
 ## Why a wrapper and not just string_view
 

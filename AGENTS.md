@@ -49,11 +49,12 @@ target is `stringified_test`; the registered CTest name is `stringified`.
   (`size`/`length`, `empty`, `data`, indexing, iterators, the `std::string_view`
   conversion, `operator<<`) read `_str_view`, never `_str` directly. `_str` is
   only ever the backing store. Keep new accessors reading the view.
-- **`c_str()` copies only when it must.** It returns the view's data unchanged
-  when the view already points into `_str` or the byte past its end is `'\0'`;
-  it copies into `_str` and re-points `_str_view` only for a non-terminated
-  slice. Don't "simplify" this into an unconditional copy, that defeats the
-  whole purpose, and don't drop the past-the-end check.
+- **`c_str()` never reads past the view.** It returns the view's data unchanged
+  only when `_terminated` is set (the view is a whole `std::string` the caller
+  owns, or our own `_str`); otherwise it copies into `_str` and re-points the
+  view. A bare `string_view` is never assumed terminated, so a literal wrapped
+  as a `string_view` is copied on the first `c_str()`. Wrap a `std::string`
+  to avoid that copy.
 - **The members are `mutable` on purpose.** `c_str()` is `const` but may fill
   `_str` and re-point `_str_view`. Keep both members `mutable`.
 - **Construction ownership matters.** `std::string&&` moves into `_str` (the
@@ -62,18 +63,11 @@ target is `stringified_test`; the registered CTest name is `stringified`.
 
 ## Traps
 
-- **`c_str()` reads the byte just past the view's end.** This is intentional and
-  safe for views into `std::string` buffers and string literals (they always
-  have a readable, usually `'\0'`, byte there). It is *not* safe for a view
-  hand-built over a buffer with no readable byte past the end. That's the
-  original Xapiand contract; callers pass views into real string storage.
-- **Copy construction copies the view, not the backing store.** The copy
-  constructor copies `_str_view` but not `_str`. If the source owned its data in
-  `_str` (built from a `std::string&&`), the copy's view dangles once the source
-  dies. This is the upstream behavior, preserved verbatim. In practice
-  `stringified` is used as a short-lived `const&` parameter, not stored or
-  copied across scopes; keep using it that way rather than "fixing" the copy
-  ctor, which would be a behavior change to reconcile with upstream.
+- **Copy and move re-point the view.** A view into the source's own `_str` is
+  rebound to the destination's `_str` (a short string's buffer lives inside the
+  object, so copying the view would dangle); a view over caller storage is
+  copied as is. Older versions copied the view verbatim (dangling) and
+  `c_str()` peeked at the byte past a `string_view`; both were bugs, fixed.
 - **It's a view first.** Prefer the implicit `std::string_view` conversion for
   reads; reach for `c_str()` only at a `const char*` boundary, since that's the
   only path that can trigger a copy.
