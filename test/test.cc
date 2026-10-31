@@ -145,7 +145,29 @@ static void test_std_format() {
 }
 
 
+// ---------------------------------------------------------------------------
+// stringified(std::string&&) takes ownership: a heap-allocated string is moved
+// (same buffer), not copied.
+// ---------------------------------------------------------------------------
+
+static void test_rvalue_string_is_moved() {
+	std::string big(200, 'x');
+	const char* original = big.data();
+	stringified s(std::move(big));
+	assert(s.data() == original);
+	assert(s.size() == 200);
+	assert(s.c_str()[200] == '\0');
+
+	std::string small("abc");
+	stringified t(std::move(small));
+	assert(std::string_view(t) == "abc");
+
+	std::printf("stringified rvalue string OK: heap buffer moved, not copied\n");
+}
+
+
 int main() {
+	test_rvalue_string_is_moved();
 	test_view_accessors();
 	test_construct_from_inputs();
 	test_c_str_null_terminated();

@@ -28,6 +28,7 @@
 #include <string>                // for std::string
 #include <string_view>           // for std::string_view
 #include <ostream>               // for std::ostream
+#include <utility>               // for std::move
 
 /*
  * The stringified class is a wrapper for std::string_view which makes
@@ -64,7 +65,7 @@ public:
     { }
 
     explicit stringified(std::string&& str)
-        : _str(str),
+        : _str(std::move(str)),
           _str_view(_str)
     { }
 
