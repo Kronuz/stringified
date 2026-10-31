@@ -98,5 +98,6 @@ Copying or moving a `stringified` built from a `std::string&&` used to leave
 the view pointing into the source's buffer (dangling for short strings), and
 `c_str()` read the byte after a `string_view`, which may be unreadable. Both are
 fixed: the view follows the object, and `c_str()` copies a `string_view` once
-instead of peeking. A `string_view` that was already terminated (a literal) now
-costs one copy on its first `c_str()`.
+instead of peeking. A `const char*` or literal is terminated by contract and
+still aliases with no copy; only a bare `string_view` costs one copy on its first
+`c_str()`.

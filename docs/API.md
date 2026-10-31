@@ -23,7 +23,7 @@ std::string_view view = "from a string_view";
 
 log_line(owned);                          // view aliases owned's buffer
 log_line(view);                           // view aliases the literal
-log_line("from a literal");               // binds via the string_view ctor
+log_line("from a literal");               // binds via the const char* ctor, c_str() aliases it
 log_line(std::string("temporary"));       // rvalue moves into the backing store
 ```
 

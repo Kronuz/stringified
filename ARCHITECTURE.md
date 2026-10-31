@@ -39,10 +39,11 @@ caller's data:
 - **`std::string&&`** — the string moves into `_str` and `_str_view` points at
   that owned copy. The wrapper now owns the data, so it outlives the caller's
   temporary.
+- **`const char*`** (including string literals) — the view spans the C string
+  and `_terminated` is set, so `c_str()` aliases it.
 - **`const std::string_view&` / `std::string_view&&`** — `_str_view` is the
-  view as given. This also catches string literals and `const char*` (they
-  convert to `std::string_view`). The wrapper owns nothing; whether `c_str()`
-  copies depends on whether that view happens to be terminated.
+  view as given. The wrapper owns nothing; the byte after the view is unknown,
+  so the first `c_str()` copies.
 
 ## The c_str() contract
 
@@ -60,9 +61,9 @@ auto c_str() const {
 }
 ```
 
-`_terminated` is set when the view is a whole `std::string` the caller owns or
-our own `_str`; then `c_str()` returns the view's data directly. For anything
-else (a `string_view`, including a literal or a slice) the byte after the view
+`_terminated` is set when the view is a whole `std::string` the caller owns, a
+`const char*` or literal, or our own `_str`; then `c_str()` returns the view's data directly. For anything
+else (a `string_view`, including a slice) the byte after the view
 is unknown and is never read: the bytes are copied into `_str` once, on first
 `c_str()`, and the view is re-pointed at that copy.
 
