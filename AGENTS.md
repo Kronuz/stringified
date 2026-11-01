@@ -13,7 +13,7 @@ test/test.cc                 Runnable smoke test: view accessors, construction f
 CMakeLists.txt               INTERFACE library `stringified` (+ alias stringified::stringified); CTest test `stringified`.
 LICENSE                      MIT, Copyright (c) 2026 Germán Méndez Bravo and (c) 2015-2020 Dubalu LLC.
 CHANGELOG.md                 Behavior changes, dated.
-README.md                    What it is, install, quick start.
+README.md                    What it is, quick start, install.
 docs/API.md                  Usage and the full interface.
 ARCHITECTURE.md              Internal design: the two members, construction, the c_str() contract.
 ```
