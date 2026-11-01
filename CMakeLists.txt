@@ -23,4 +23,10 @@ if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
   add_executable(stringified_test test/test.cc)
   target_link_libraries(stringified_test PRIVATE stringified)
   add_test(NAME stringified COMMAND stringified_test)
+
+  # Overload resolution of the const char* constructor: a literal must not make
+  # f(stringified) / f(std::string_view) ambiguous. Fails to build when it does.
+  add_executable(stringified_overload_test test/overload_test.cc)
+  target_link_libraries(stringified_overload_test PRIVATE stringified)
+  add_test(NAME stringified_overloads COMMAND stringified_overload_test)
 endif()

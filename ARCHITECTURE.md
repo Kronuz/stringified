@@ -39,8 +39,13 @@ caller's data:
 - **`std::string&&`** (explicit): the string moves into `_str` and `_str_view`
   points at it. The wrapper owns the data, so it outlives the caller's
   temporary.
-- **`const char*`** (including string literals): the view spans the C string
-  and `_terminated` is set, so `c_str()` aliases it.
+- **`const char*` / `char*`** (including string literals and char buffers;
+  explicit): the view spans the C string and `_terminated` is set, so `c_str()`
+  aliases it. It is explicit so a literal is not a second user-defined
+  conversion next to `std::string_view` or `std::string` overloads, and it is a
+  template on the exact pointer types so a type convertible to both
+  `const char*` and `std::string_view` (static_string) still takes the
+  `std::string_view` constructor.
 - **`const std::string_view&` / `std::string_view&&`**: `_str_view` is the
   view as given. The wrapper owns nothing; the byte after the view is unknown,
   so the first `c_str()` copies.

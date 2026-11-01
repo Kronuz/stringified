@@ -8,13 +8,33 @@ release tags yet, so entries are dated.
 
 ### Added
 
-- A `stringified(const char*)` constructor. A C string, literal or char buffer is
-  null-terminated by contract, so `c_str()` returns it with no copy. Literals
-  bound to the `string_view` constructor before, and so paid one copy on their
-  first `c_str()`.
+- An explicit `stringified(const char*)` / `stringified(char*)` constructor. A C
+  string, literal or char buffer is null-terminated by contract, so `c_str()`
+  returns it with no copy. Literals bound to the `string_view` constructor
+  before, and so paid one copy on their first `c_str()`.
+- `test/overload_test.cc` (CTest `stringified_overloads`): overload sets over
+  `stringified` and `std::string_view` / `const std::string&` called with a
+  literal, a `const char*` and a char buffer, `static_assert`s on which
+  conversions are implicit, and a type convertible to both `const char*` and
+  `std::string_view`. It fails to build when either ambiguity returns.
 
 ### Fixed
 
+- **The first version of the `const char*` constructor (commit `2c78a1d`) was
+  implicit and broke overloads.** `f("abc")` was ambiguous between `f(stringified)`
+  and `f(std::string_view)`, and between `g(stringified)` and
+  `g(const std::string&)`, because a literal then had two different user-defined
+  conversions; before it, only the other overload was viable. A
+  `stringified(static_string)` was also ambiguous, since `static_string` converts
+  to both `const char*` and `std::string_view`. The constructor is now explicit
+  and a template on the exact types `const char*` and `char*`, so a literal never
+  converts implicitly and a `static_string` takes the `std::string_view`
+  constructor. Direct initialization (`stringified(path)`) is unchanged, so fs,
+  storage and Xapiand compile as before. Code that passed a literal to a
+  parameter of type `stringified` against `2c78a1d` must now write
+  `stringified("...")`; it did not compile before `2c78a1d` either. A constructor
+  template alone does not remove the first ambiguity, since two different
+  constructors are never ranked.
 - **Copy and move kept a dangling view.** Copy and move construction and
   assignment copied the `string_view` verbatim, so a view into the source's
   short-string buffer (or heap block) dangled once the source died or was moved

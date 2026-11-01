@@ -17,7 +17,8 @@ when a C API needs one. It copies only when termination requires it.
 ## ✨ Highlights
 
 - **One signature** for views and strings: `std::string_view` converts implicitly;
-  `std::string` takes an explicit `stringified(s)`.
+  `std::string` and C strings take an explicit `stringified(s)`, so a literal
+  never makes an overload set ambiguous.
 - **No copy when possible.** `c_str()` points back into a whole `std::string`
   or a C string. It copies a bare `string_view` once, on the first call, because
   the byte after a view is unknown and never read.
@@ -61,7 +62,8 @@ int main() {
 	std::string owned = "from a std::string\n";
 	log_line(stringified(owned));                          // explicit; no copy
 	log_line(std::string_view("from a view\n"));           // implicit
-	log_line(std::string_view("from a literal\n"));
+	log_line(stringified("from a literal\n"));            // explicit; c_str() aliases the literal
+	log_line(std::string_view("from a view of a literal\n"));
 }
 ```
 

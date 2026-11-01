@@ -62,6 +62,11 @@ target is `stringified_test`; the registered CTest name is `stringified`.
 - **Construction ownership matters.** `std::string&&` moves into `_str` (the
   wrapper owns it); `const std::string&` and the `string_view` ctors alias the
   caller's data. Don't change which constructors copy.
+- **The `const char*` constructor stays explicit and exact.** A non-explicit
+  one makes `f("abc")` ambiguous between `f(stringified)` and
+  `f(std::string_view)` / `f(const std::string&)`; taking a plain `const char*`
+  parameter makes `stringified(static_string)` ambiguous. `test/overload_test.cc`
+  fails to build when either returns.
 
 ## Traps
 

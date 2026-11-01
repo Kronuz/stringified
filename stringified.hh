@@ -30,6 +30,7 @@
 #include <string>                // for std::string
 #include <string_view>           // for std::string_view
 #include <ostream>               // for std::ostream
+#include <type_traits>           // for std::enable_if_t, std::is_same_v
 #include <utility>               // for std::move
 
 /*
@@ -123,7 +124,10 @@ public:
     }
 
     // A C string, literal or char buffer is terminated by contract: c_str() aliases it.
-    stringified(const char* str)
+    // Explicit: implicit, a literal would make f(stringified) / f(std::string_view) ambiguous.
+    // Only the pointer types themselves, so a static_string (convertible to both) keeps the view path.
+    template <typename C, typename = std::enable_if_t<std::is_same_v<C, const char*> || std::is_same_v<C, char*>>>
+    explicit stringified(C str)
         : _str_view(str),
           _terminated(true)
     { }
