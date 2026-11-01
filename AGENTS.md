@@ -31,6 +31,34 @@ cmake -B build && cmake --build build && ctest --test-dir build
 Expected output ends with `all stringified tests passed`, exit 0. The test
 target is `stringified_test`; the registered CTest name is `stringified`.
 
+## Verification and benchmarks
+
+The method shared by the Kronuz libraries is in
+[docs/PERFORMANCE.md](https://github.com/Kronuz/cpp-libraries/blob/main/docs/PERFORMANCE.md).
+
+- **Tests.** `cmake -B build && cmake --build build && ctest --test-dir build` runs
+  `stringified` (`test/test.cc`) and `stringified_overloads` (`test/overload_test.cc`). The
+  second is a compile-time check: when a literal makes `f(stringified)` and
+  `f(std::string_view)` ambiguous again, the build fails.
+- **Oracle.** The `std::string` and `std::string_view` contracts, checked by AddressSanitizer:
+  the tests copy, move and assign every size from 0 to 80 and a view over an exact-size heap
+  block, so a dangling view or a read past the view is a heap-use-after-free or an overflow in
+  the ASan build.
+- **Sanitizers.** CI (`.github/workflows/ci.yml`, which calls the shared
+  [cmake.yml](https://github.com/Kronuz/cpp-libraries/blob/main/.github/workflows/cmake.yml))
+  runs both tests in an ASan+UBSan build and a TSan build, with clang on Linux. The ASan+UBSan
+  job is:
+
+  ```sh
+  CC=clang CXX=clang++ cmake -B build-asan -DCMAKE_BUILD_TYPE=Debug \
+    -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -fno-sanitize-recover=undefined -fno-omit-frame-pointer -D_GLIBCXX_ASSERTIONS" \
+    -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
+  cmake --build build-asan && ASAN_OPTIONS=detect_leaks=1 ctest --test-dir build-asan --output-on-failure
+  ```
+
+- **Not here.** The repository has no benchmark target, differential test, fuzz target or
+  mutation script.
+
 ## Conventions
 
 - **C++20.** The target requests `cxx_std_20` to stay uniform with the sibling
