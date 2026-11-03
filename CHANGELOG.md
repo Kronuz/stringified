@@ -6,6 +6,14 @@ release tags yet, so entries are dated.
 
 Upgrading a pin from before 2026-10-30: [the consumer upgrade note](https://github.com/Kronuz/cpp-libraries/blob/main/docs/UPGRADING-2026-10.md#stringified) lists what changes for callers, how to find affected inputs, the commits not to pin, and the speedup.
 
+## 2026-11-02
+
+### Fixed
+
+- `std::formatter<stringified>` is defined on libc++ 17 and 18, which ship a usable
+  `<format>` without defining `__cpp_lib_format` (FreeBSD 14, Ubuntu's libc++-18-dev).
+  `test/test.cc` covers it.
+
 ## 2026-10-31
 
 ### Added

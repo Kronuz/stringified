@@ -209,7 +209,8 @@ public:
 };
 
 
-#if defined(__cpp_lib_format)
+#if defined(__cpp_lib_format) || (defined(_LIBCPP_VERSION) && _LIBCPP_VERSION >= 170000)
+// libc++ 17 and 18 ship a usable <format> but do not define __cpp_lib_format.
 // std::format support: a stringified is a string_view wrapper, so format it as one.
 template <>
 struct std::formatter<stringified> : std::formatter<std::string_view> {
@@ -219,6 +220,6 @@ struct std::formatter<stringified> : std::formatter<std::string_view> {
 	}
 };
 
-#endif // __cpp_lib_format
+#endif // std::format support
 
 #endif // STRINGIFIED_HH

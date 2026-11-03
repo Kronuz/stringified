@@ -136,7 +136,8 @@ static void test_iterate_and_stream() {
 // stringified exactly as its underlying string_view, including format specs.
 // ---------------------------------------------------------------------------
 
-#if defined(__cpp_lib_format)
+// libc++ 17 and 18 ship a usable <format> but do not define __cpp_lib_format.
+#if defined(__cpp_lib_format) || (defined(_LIBCPP_VERSION) && _LIBCPP_VERSION >= 170000)
 static void test_std_format() {
 	const std::string owned = "world";
 	stringified s(owned);
@@ -308,7 +309,7 @@ int main() {
 	test_construct_from_inputs();
 	test_c_str_null_terminated();
 	test_iterate_and_stream();
-#if defined(__cpp_lib_format)
+#if defined(__cpp_lib_format) || (defined(_LIBCPP_VERSION) && _LIBCPP_VERSION >= 170000)
 	test_std_format();
 #endif
 	std::printf("all stringified tests passed\n");
